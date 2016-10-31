@@ -2,11 +2,14 @@
 
 /***
  * Class Sitemap
- * Version 0.6.1
+ * Version 0.7.3
  * Author Kaio Rocha
  */
 
 class Sitemap {
+
+    const HTTP_CODE_200 = 200;
+    const HTTP_CODE_301 = 301;
 
     protected $arquivo;
     protected $url;
@@ -40,9 +43,18 @@ class Sitemap {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $this->get_url());
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         $dados = curl_exec($ch);
+        $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        return $dados;
+
+        if($httpcode == self::HTTP_CODE_200){
+            return $dados;
+        }
+
+        $this->set_url(str_replace('http:', 'https:', $this->get_url()));
+
+        return $this->acessar_url();
     }
 
     public function scanear($sub = true){
@@ -87,7 +99,7 @@ class Sitemap {
         return $this->scaneados;
     }
 
-    function xml(){
+    public function xml(){
         $this->scanear();
 
         $dom = new DOMDocument("1.0", "UTF-8");
@@ -101,6 +113,8 @@ class Sitemap {
         $root->setAttribute('xmlns:mobile', $this->xmlns_mobile);
 
         $i = 0;
+        $url = [];
+
         foreach ($this->scaneados as $link) {
             $url[$i] = $dom->createElement('url');
             $loc = $dom->createElement("loc", $link);
